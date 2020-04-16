@@ -8,15 +8,16 @@ package peer
 
 import (
 	reqContext "context"
-	"crypto/x509"
+	//"crypto/x509"
+	x509 "github.com/zcqzcg/gmsm/sm2"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 
+	credentials "github.com/zcqzcg/gmtls/gmcredentials"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	grpcstatus "google.golang.org/grpc/status"
 

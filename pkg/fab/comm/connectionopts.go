@@ -8,7 +8,10 @@ package comm
 
 import (
 	"context"
-	"crypto/x509"
+	//"crypto/tls"
+	//"crypto/x509"
+	//tls "github.com/zcqzcg/gmtls"
+	x509 "github.com/zcqzcg/gmsm/sm2"
 	"time"
 
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/options"

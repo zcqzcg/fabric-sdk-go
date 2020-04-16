@@ -8,8 +8,10 @@ package fab
 
 import (
 	reqContext "context"
-	"crypto/tls"
-	"crypto/x509"
+	//"crypto/tls"
+	//"crypto/x509"
+	x509 "github.com/zcqzcg/gmsm/sm2"
+	tls "github.com/zcqzcg/gmtls"
 	"time"
 
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/options"

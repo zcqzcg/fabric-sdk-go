@@ -12,15 +12,15 @@ package msp
 
 import (
 	"bytes"
-	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
+	"github.com/zcqzcg/gmsm/sm2"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	m "github.com/hyperledger/fabric-protos-go/msp"
 	bccsp "github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric/sdkpatch/cryptosuitebridge"
-	errors "github.com/pkg/errors"
+	"github.com/pkg/errors"
 )
 
 func (msp *bccspmsp) getCertifiersIdentifier(certRaw []byte) ([]byte, error) {
@@ -62,9 +62,9 @@ func (msp *bccspmsp) getCertifiersIdentifier(certRaw []byte) ([]byte, error) {
 
 	// 3. get the certification path for it
 	var certifiersIdentifier []byte
-	var chain []*x509.Certificate
+	var chain []*sm2.Certificate
 	if root {
-		chain = []*x509.Certificate{cert}
+		chain = []*sm2.Certificate{cert}
 	} else {
 		chain, err = msp.getValidationChain(cert, true)
 		if err != nil {
@@ -115,7 +115,7 @@ func (msp *bccspmsp) setupCAs(conf *m.FabricMSPConfig) error {
 	// Recall that sanitization is applied also to root CA and intermediate
 	// CA certificates. After their sanitization is done, the opts
 	// will be recreated using the sanitized certs.
-	msp.opts = &x509.VerifyOptions{Roots: x509.NewCertPool(), Intermediates: x509.NewCertPool()}
+	msp.opts = &sm2.VerifyOptions{Roots: sm2.NewCertPool(), Intermediates: sm2.NewCertPool()}
 	for _, v := range conf.RootCerts {
 		cert, err := msp.getCertFromPem(v)
 		if err != nil {
@@ -154,8 +154,8 @@ func (msp *bccspmsp) setupCAs(conf *m.FabricMSPConfig) error {
 		msp.intermediateCerts[i] = id
 	}
 
-	// root CA and intermediate CA certificates are sanitized, they can be re-imported
-	msp.opts = &x509.VerifyOptions{Roots: x509.NewCertPool(), Intermediates: x509.NewCertPool()}
+	// root CA and intermediate CA certificates are sanitized, they can be reimported
+	msp.opts = &sm2.VerifyOptions{Roots: sm2.NewCertPool(), Intermediates: sm2.NewCertPool()}
 	for _, id := range msp.rootCerts {
 		msp.opts.Roots.AddCert(id.(*identity).cert)
 	}
@@ -170,7 +170,7 @@ func (msp *bccspmsp) setupAdmins(conf *m.FabricMSPConfig) error {
 	return msp.internalSetupAdmin(conf)
 }
 
-func (msp *bccspmsp) setupAdminsPreV142(conf *m.FabricMSPConfig) error {
+func (msp *bccspmsp) setupAdminsPreV143(conf *m.FabricMSPConfig) error {
 	// make and fill the set of admin certs (if present)
 	msp.admins = make([]Identity, len(conf.Admins))
 	for i, admCert := range conf.Admins {
@@ -185,9 +185,9 @@ func (msp *bccspmsp) setupAdminsPreV142(conf *m.FabricMSPConfig) error {
 	return nil
 }
 
-func (msp *bccspmsp) setupAdminsV142(conf *m.FabricMSPConfig) error {
+func (msp *bccspmsp) setupAdminsV143(conf *m.FabricMSPConfig) error {
 	// make and fill the set of admin certs (if present)
-	if err := msp.setupAdminsPreV142(conf); err != nil {
+	if err := msp.setupAdminsPreV143(conf); err != nil {
 		return err
 	}
 
@@ -202,7 +202,7 @@ func (msp *bccspmsp) setupCRLs(conf *m.FabricMSPConfig) error {
 	// setup the CRL (if present)
 	msp.CRL = make([]*pkix.CertificateList, len(conf.RevocationList))
 	for i, crlbytes := range conf.RevocationList {
-		crl, err := x509.ParseCRL(crlbytes)
+		crl, err := sm2.ParseCRL(crlbytes)
 		if err != nil {
 			return errors.Wrap(err, "could not parse RevocationList")
 		}
@@ -291,7 +291,7 @@ func (msp *bccspmsp) setupNodeOUs(config *m.FabricMSPConfig) error {
 	return nil
 }
 
-func (msp *bccspmsp) setupNodeOUsV142(config *m.FabricMSPConfig) error {
+func (msp *bccspmsp) setupNodeOUsV143(config *m.FabricMSPConfig) error {
 	if config.FabricNodeOus == nil {
 		msp.ouEnforcement = false
 		return nil
@@ -424,11 +424,11 @@ func (msp *bccspmsp) setupOUs(conf *m.FabricMSPConfig) error {
 
 func (msp *bccspmsp) setupTLSCAs(conf *m.FabricMSPConfig) error {
 
-	opts := &x509.VerifyOptions{Roots: x509.NewCertPool(), Intermediates: x509.NewCertPool()}
+	opts := &sm2.VerifyOptions{Roots: sm2.NewCertPool(), Intermediates: sm2.NewCertPool()}
 
 	// Load TLS root and intermediate CA identities
 	msp.tlsRootCerts = make([][]byte, len(conf.TlsRootCerts))
-	rootCerts := make([]*x509.Certificate, len(conf.TlsRootCerts))
+	rootCerts := make([]*sm2.Certificate, len(conf.TlsRootCerts))
 	for i, trustedCert := range conf.TlsRootCerts {
 		cert, err := msp.getCertFromPem(trustedCert)
 		if err != nil {
@@ -442,7 +442,7 @@ func (msp *bccspmsp) setupTLSCAs(conf *m.FabricMSPConfig) error {
 
 	// make and fill the set of intermediate certs (if present)
 	msp.tlsIntermediateCerts = make([][]byte, len(conf.TlsIntermediateCerts))
-	intermediateCerts := make([]*x509.Certificate, len(conf.TlsIntermediateCerts))
+	intermediateCerts := make([]*sm2.Certificate, len(conf.TlsIntermediateCerts))
 	for i, trustedCert := range conf.TlsIntermediateCerts {
 		cert, err := msp.getCertFromPem(trustedCert)
 		if err != nil {
@@ -455,7 +455,7 @@ func (msp *bccspmsp) setupTLSCAs(conf *m.FabricMSPConfig) error {
 	}
 
 	// ensure that our CAs are properly formed and that they are valid
-	for _, cert := range append(append([]*x509.Certificate{}, rootCerts...), intermediateCerts...) {
+	for _, cert := range append(append([]*sm2.Certificate{}, rootCerts...), intermediateCerts...) {
 		if cert == nil {
 			continue
 		}
@@ -533,7 +533,7 @@ func (msp *bccspmsp) preSetupV1(conf *m.FabricMSPConfig) error {
 	return nil
 }
 
-func (msp *bccspmsp) preSetupV142(conf *m.FabricMSPConfig) error {
+func (msp *bccspmsp) preSetupV143(conf *m.FabricMSPConfig) error {
 	// setup crypto config
 	if err := msp.setupCrypto(conf); err != nil {
 		return err
@@ -570,7 +570,7 @@ func (msp *bccspmsp) preSetupV142(conf *m.FabricMSPConfig) error {
 	}
 
 	// setup NodeOUs
-	if err := msp.setupNodeOUsV142(conf); err != nil {
+	if err := msp.setupNodeOUsV143(conf); err != nil {
 		return err
 	}
 
@@ -615,13 +615,13 @@ func (msp *bccspmsp) setupV11(conf *m.FabricMSPConfig) error {
 	return nil
 }
 
-func (msp *bccspmsp) setupV142(conf *m.FabricMSPConfig) error {
-	err := msp.preSetupV142(conf)
+func (msp *bccspmsp) setupV143(conf *m.FabricMSPConfig) error {
+	err := msp.preSetupV143(conf)
 	if err != nil {
 		return err
 	}
 
-	err = msp.postSetupV142(conf)
+	err = msp.postSetupV143(conf)
 	if err != nil {
 		return err
 	}
@@ -654,7 +654,7 @@ func (msp *bccspmsp) postSetupV11(conf *m.FabricMSPConfig) error {
 	return nil
 }
 
-func (msp *bccspmsp) postSetupV142(conf *m.FabricMSPConfig) error {
+func (msp *bccspmsp) postSetupV143(conf *m.FabricMSPConfig) error {
 	// Check for OU enforcement
 	if !msp.ouEnforcement {
 		// No enforcement required. Call post setup as per V1

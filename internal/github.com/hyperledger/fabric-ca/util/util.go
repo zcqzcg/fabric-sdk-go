@@ -28,6 +28,8 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric/bccsp/gm"
+	"github.com/zcqzcg/gmsm/sm2"
 	"io/ioutil"
 	"math/big"
 	mrand "math/rand"
@@ -155,7 +157,13 @@ func CreateToken(csp core.CryptoSuite, cert []byte, key core.Key, method, uri st
 		if err != nil {
 			return "", err
 		}
+	case *sm2.PublicKey:
+		token, err = GenSM2Token(csp, cert, key, method, uri, body)
+		if err != nil {
+			return "", err
+		}
 	}
+
 	return token, nil
 }
 
@@ -179,6 +187,45 @@ func genECDSAToken(csp core.CryptoSuite, key core.Key, b64cert, payload string) 
 	if digestError != nil {
 		return "", errors.WithMessage(digestError, fmt.Sprintf("Hash failed on '%s'", payload))
 	}
+
+	ecSignature, err := csp.Sign(key, digest, nil)
+	if err != nil {
+		return "", errors.WithMessage(err, "BCCSP signature generation failure")
+	}
+	if len(ecSignature) == 0 {
+		return "", errors.New("BCCSP signature creation failed. Signature must be different than nil")
+	}
+
+	b64sig := B64Encode(ecSignature)
+	token := b64cert + "." + b64sig
+
+	return token, nil
+
+}
+
+//GenECDSAToken signs the http body and cert with ECDSA using EC private key
+func GenSM2Token(csp core.CryptoSuite, cert []byte, key core.Key, method, uri string, body []byte) (string, error) {
+	b64body := B64Encode(body)
+	b64cert := B64Encode(cert)
+	b64uri := B64Encode([]byte(uri))
+	payload := method + "." + b64uri + "." + b64body + "." + b64cert
+
+	return genSM2Token(csp, key, b64cert, payload)
+}
+
+func genSM2Token(csp core.CryptoSuite, key core.Key, b64cert, payload string) (string, error) {
+	// 约定好的 hash 为　SHA
+	digest, digestError := csp.Hash([]byte(payload), factory.GetSHAOpts())
+	if digestError != nil {
+		return "", errors.WithMessage(digestError, fmt.Sprintf("Hash failed on '%s'", payload))
+	}
+	// xxx before csp .KeyImport csp : *gm.impl
+	// 验证的时候， csp 就是 *gm.impl
+	//log.Infof("xxx The ORIGINAL csp for genSM2Token csp : %T", csp)
+	newCsp := factory.GetDefault()
+	//log.Infof("xxx Get BRAND NEW csp for genSM2Token csp : %T", newCsp)
+	csp = nil
+	csp = newCsp
 
 	ecSignature, err := csp.Sign(key, digest, nil)
 	if err != nil {
@@ -227,7 +274,16 @@ func GetX509CertificateFromPEM(cert []byte) (*x509.Certificate, error) {
 	if block == nil {
 		return nil, errors.New("Failed to PEM decode certificate")
 	}
-	x509Cert, err := x509.ParseCertificate(block.Bytes)
+	var x509Cert *x509.Certificate
+	var err error
+	//log.Debugf("cpcpcpcpcpcpcpcpcpcpcpcpcpcpcppcpc")
+	sm2x509Cert, err := sm2.ParseCertificate(block.Bytes)
+	if err == nil {
+		x509Cert = gm.ParseSm2Certificate2X509(sm2x509Cert)
+	} else {
+		x509Cert, err = x509.ParseCertificate(block.Bytes)
+	}
+
 	if err != nil {
 		return nil, errors.Wrap(err, "Error parsing certificate")
 	}

@@ -12,7 +12,8 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/fab"
 	"github.com/hyperledger/fabric-sdk-go/pkg/core/logging/api"
 
-	cryptosuiteimpl "github.com/hyperledger/fabric-sdk-go/pkg/core/cryptosuite/bccsp/sw"
+	cryptosuiteimplGm "github.com/hyperledger/fabric-sdk-go/pkg/core/cryptosuite/bccsp/gm"
+	cryptosuiteimplSw "github.com/hyperledger/fabric-sdk-go/pkg/core/cryptosuite/bccsp/sw"
 	signingMgr "github.com/hyperledger/fabric-sdk-go/pkg/fab/signingmgr"
 	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk/provider/fabpvdr"
 
@@ -32,11 +33,16 @@ func NewProviderFactory() *ProviderFactory {
 }
 
 // CreateCryptoSuiteProvider returns a new default implementation of BCCSP
-func (f *ProviderFactory) CreateCryptoSuiteProvider(config core.CryptoSuiteConfig) (core.CryptoSuite, error) {
-	if config.SecurityProvider() != "sw" {
+func (f *ProviderFactory) CreateCryptoSuiteProvider(config core.CryptoSuiteConfig) (cryptoSuiteProvider core.CryptoSuite, err error) {
+	switch config.SecurityProvider() {
+	case "sw":
+		cryptoSuiteProvider, err = cryptosuiteimplSw.GetSuiteByConfig(config)
+	case "gm":
+		cryptoSuiteProvider, err = cryptosuiteimplGm.GetSuiteByConfig(config)
+	default:
 		logger.Warnf("default provider factory doesn't support '%s' crypto provider", config.SecurityProvider())
 	}
-	cryptoSuiteProvider, err := cryptosuiteimpl.GetSuiteByConfig(config)
+
 	return cryptoSuiteProvider, err
 }
 

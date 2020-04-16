@@ -13,7 +13,6 @@ package x509
 import (
 	"crypto/x509"
 	"fmt"
-
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/core"
 
 	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/lib/attrmgr"
@@ -29,6 +28,7 @@ func NewSigner(key core.Key, cert []byte) (*Signer, error) {
 	}
 	var err error
 	s.cert, err = util.GetX509CertificateFromPEM(s.certBytes)
+	//s.cert, err = sm2.ReadCertificateFromMem(s.certBytes)
 	if err != nil {
 		return nil, errors.WithMessage(err, "Failed to unmarshal X509 certificate bytes")
 	}

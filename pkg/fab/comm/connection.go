@@ -7,7 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package comm
 
 import (
-	"crypto/x509"
+	//"crypto/tls"
+	//"crypto/x509"
+	//tls "github.com/zcqzcg/gmtls"
+	x509 "github.com/zcqzcg/gmsm/sm2"
 	"sync/atomic"
 
 	"github.com/pkg/errors"
@@ -21,7 +24,8 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/pkg/core/config/comm"
 	"github.com/hyperledger/fabric-sdk-go/pkg/core/config/endpoint"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
+	//"google.golang.org/grpc/credentials"
+	credentials "github.com/zcqzcg/gmtls/gmcredentials"
 )
 
 var logger = logging.NewLogger("fabsdk/fab")

@@ -12,7 +12,7 @@ package msp
 
 import (
 	"bytes"
-	"crypto/x509"
+	//"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/hex"
 	"encoding/pem"
@@ -22,6 +22,7 @@ import (
 	factory "github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric/sdkpatch/cryptosuitebridge"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/core"
 	"github.com/pkg/errors"
+	"github.com/zcqzcg/gmsm/sm2"
 )
 
 // mspSetupFuncType is the prototype of the setup function
@@ -86,7 +87,7 @@ type bccspmsp struct {
 	name string
 
 	// verification options for MSP members
-	opts *x509.VerifyOptions
+	opts *sm2.VerifyOptions
 
 	// list of certificate revocation lists
 	CRL []*pkix.CertificateList
@@ -119,22 +120,22 @@ func newBccspMsp(version MSPVersion, defaultBCCSP core.CryptoSuite) (MSP, error)
 		theMsp.internalSetupFunc = theMsp.setupV1
 		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV1
 		theMsp.internalSatisfiesPrincipalInternalFunc = theMsp.satisfiesPrincipalInternalPreV13
-		theMsp.internalSetupAdmin = theMsp.setupAdminsPreV142
+		theMsp.internalSetupAdmin = theMsp.setupAdminsPreV143
 	case MSPv1_1:
 		theMsp.internalSetupFunc = theMsp.setupV11
 		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV11
 		theMsp.internalSatisfiesPrincipalInternalFunc = theMsp.satisfiesPrincipalInternalPreV13
-		theMsp.internalSetupAdmin = theMsp.setupAdminsPreV142
+		theMsp.internalSetupAdmin = theMsp.setupAdminsPreV143
 	case MSPv1_3:
 		theMsp.internalSetupFunc = theMsp.setupV11
 		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV11
 		theMsp.internalSatisfiesPrincipalInternalFunc = theMsp.satisfiesPrincipalInternalV13
-		theMsp.internalSetupAdmin = theMsp.setupAdminsPreV142
+		theMsp.internalSetupAdmin = theMsp.setupAdminsPreV143
 	case MSPv1_4_3:
-		theMsp.internalSetupFunc = theMsp.setupV142
-		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV142
-		theMsp.internalSatisfiesPrincipalInternalFunc = theMsp.satisfiesPrincipalInternalV142
-		theMsp.internalSetupAdmin = theMsp.setupAdminsV142
+		theMsp.internalSetupFunc = theMsp.setupV143
+		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV143
+		theMsp.internalSatisfiesPrincipalInternalFunc = theMsp.satisfiesPrincipalInternalV143
+		theMsp.internalSetupAdmin = theMsp.setupAdminsV143
 	default:
 		return nil, errors.Errorf("Invalid MSP version [%v]", version)
 	}
@@ -142,7 +143,7 @@ func newBccspMsp(version MSPVersion, defaultBCCSP core.CryptoSuite) (MSP, error)
 	return theMsp, nil
 }
 
-func (msp *bccspmsp) getCertFromPem(idBytes []byte) (*x509.Certificate, error) {
+func (msp *bccspmsp) getCertFromPem(idBytes []byte) (*sm2.Certificate, error) {
 	if idBytes == nil {
 		return nil, errors.New("getCertFromPem error: nil idBytes")
 	}
@@ -154,10 +155,10 @@ func (msp *bccspmsp) getCertFromPem(idBytes []byte) (*x509.Certificate, error) {
 	}
 
 	// get a cert
-	var cert *x509.Certificate
-	cert, err := x509.ParseCertificate(pemCert.Bytes)
+	var cert *sm2.Certificate
+	cert, err := sm2.ParseCertificate(pemCert.Bytes)
 	if err != nil {
-		return nil, errors.Wrap(err, "getCertFromPem error: failed to parse x509 cert")
+		return nil, errors.Wrap(err, "getCertFromPem error: failed to parse sm2 cert")
 	}
 
 	return cert, nil
@@ -347,6 +348,9 @@ func (msp *bccspmsp) hasOURoleInternal(id *identity, mspRole m.MSPRole_MSPRoleTy
 		return errors.New("Invalid MSPRoleType. It must be CLIENT, PEER, ADMIN or ORDERER")
 	}
 
+	// Notice that, for versions prior to v1.4.3, hasOURoleInternal is invoked
+	// only to check that an identity is a client or a peer. The relative nodeOU are supposed to be different from nil.
+	// For version >= v1.4.3, any classification is optional.
 	if nodeOU == nil {
 		return errors.Errorf("cannot test for classification, node ou for type [%s], not defined, msp: [%s]", mspRole, msp.name)
 	}
@@ -386,7 +390,7 @@ func (msp *bccspmsp) deserializeIdentityInternal(serializedIdentity []byte) (Ide
 	if bl == nil {
 		return nil, errors.New("could not decode the PEM structure")
 	}
-	cert, err := x509.ParseCertificate(bl.Bytes)
+	cert, err := sm2.ParseCertificate(bl.Bytes)
 	if err != nil {
 		return nil, errors.Wrap(err, "parseCertificate failed")
 	}
@@ -406,7 +410,7 @@ func (msp *bccspmsp) deserializeIdentityInternal(serializedIdentity []byte) (Ide
 	return newIdentity(cert, pub, msp)
 }
 
-// SatisfiesPrincipal returns nil if the identity matches the principal or an error otherwise
+// SatisfiesPrincipal returns null if the identity matches the principal or an error otherwise
 func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) error {
 	principals, err := collectPrincipals(principal, msp.GetVersion())
 	if err != nil {
@@ -585,11 +589,11 @@ func (msp *bccspmsp) satisfiesPrincipalInternalV13(id Identity, principal *m.MSP
 	}
 }
 
-// satisfiesPrincipalInternalV142 takes as arguments the identity and the principal.
+// satisfiesPrincipalInternalV143 takes as arguments the identity and the principal.
 // The function returns an error if one occurred.
 // The function implements the additional behavior expected of an MSP starting from v2.0.
 // For v1.3 functionality, the function calls the satisfiesPrincipalInternalPreV13.
-func (msp *bccspmsp) satisfiesPrincipalInternalV142(id Identity, principal *m.MSPPrincipal) error {
+func (msp *bccspmsp) satisfiesPrincipalInternalV143(id Identity, principal *m.MSPPrincipal) error {
 	_, okay := id.(*identity)
 	if !okay {
 		return errors.New("invalid identity type, expected *identity")
@@ -665,7 +669,7 @@ func (msp *bccspmsp) isInAdmins(id *identity) bool {
 }
 
 // getCertificationChain returns the certification chain of the passed identity within this msp
-func (msp *bccspmsp) getCertificationChain(id Identity) ([]*x509.Certificate, error) {
+func (msp *bccspmsp) getCertificationChain(id Identity) ([]*sm2.Certificate, error) {
 	mspLogger.Debugf("MSP %s getting certification chain", msp.name)
 
 	switch id := id.(type) {
@@ -680,7 +684,7 @@ func (msp *bccspmsp) getCertificationChain(id Identity) ([]*x509.Certificate, er
 }
 
 // getCertificationChainForBCCSPIdentity returns the certification chain of the passed bccsp identity within this msp
-func (msp *bccspmsp) getCertificationChainForBCCSPIdentity(id *identity) ([]*x509.Certificate, error) {
+func (msp *bccspmsp) getCertificationChainForBCCSPIdentity(id *identity) ([]*sm2.Certificate, error) {
 	if id == nil {
 		return nil, errors.New("Invalid bccsp identity. Must be different from nil.")
 	}
@@ -699,7 +703,7 @@ func (msp *bccspmsp) getCertificationChainForBCCSPIdentity(id *identity) ([]*x50
 	return msp.getValidationChain(id.cert, false)
 }
 
-func (msp *bccspmsp) getUniqueValidationChain(cert *x509.Certificate, opts x509.VerifyOptions) ([]*x509.Certificate, error) {
+func (msp *bccspmsp) getUniqueValidationChain(cert *sm2.Certificate, opts sm2.VerifyOptions) ([]*sm2.Certificate, error) {
 	// ask golang to validate the cert for us based on the options that we've built at setup time
 	if msp.opts == nil {
 		return nil, errors.New("the supplied identity has no verify options")
@@ -719,7 +723,7 @@ func (msp *bccspmsp) getUniqueValidationChain(cert *x509.Certificate, opts x509.
 	return validationChains[0], nil
 }
 
-func (msp *bccspmsp) getValidationChain(cert *x509.Certificate, isIntermediateChain bool) ([]*x509.Certificate, error) {
+func (msp *bccspmsp) getValidationChain(cert *sm2.Certificate, isIntermediateChain bool) ([]*sm2.Certificate, error) {
 	validationChain, err := msp.getUniqueValidationChain(cert, msp.getValidityOptsForCert(cert))
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed getting validation chain")
@@ -755,7 +759,7 @@ func (msp *bccspmsp) getCertificationChainIdentifier(id Identity) ([]byte, error
 	return msp.getCertificationChainIdentifierFromChain(chain[1:])
 }
 
-func (msp *bccspmsp) getCertificationChainIdentifierFromChain(chain []*x509.Certificate) ([]byte, error) {
+func (msp *bccspmsp) getCertificationChainIdentifierFromChain(chain []*sm2.Certificate) ([]byte, error) {
 	// Hash the chain
 	// Use the hash of the identity's certificate as id in the IdentityIdentifier
 	hashOpt, err := factory.GetHashOpt(msp.cryptoConfig.IdentityIdentifierHashFunction)
@@ -773,13 +777,13 @@ func (msp *bccspmsp) getCertificationChainIdentifierFromChain(chain []*x509.Cert
 	return hf.Sum(nil), nil
 }
 
-// sanitizeCert ensures that x509 certificates signed using ECDSA
+// sanitizeCert ensures that sm2 certificates signed using ECDSA
 // do have signatures in Low-S. If this is not the case, the certificate
 // is regenerated to have a Low-S signature.
-func (msp *bccspmsp) sanitizeCert(cert *x509.Certificate) (*x509.Certificate, error) {
+func (msp *bccspmsp) sanitizeCert(cert *sm2.Certificate) (*sm2.Certificate, error) {
 	if isECDSASignedCert(cert) {
 		// Lookup for a parent certificate to perform the sanitization
-		var parentCert *x509.Certificate
+		var parentCert *sm2.Certificate
 		chain, err := msp.getUniqueValidationChain(cert, msp.getValidityOptsForCert(cert))
 		if err != nil {
 			return nil, err
@@ -811,7 +815,7 @@ func (msp *bccspmsp) IsWellFormed(identity *m.SerializedIdentity) error {
 	if bl == nil {
 		return errors.New("PEM decoding resulted in an empty block")
 	}
-	// Important: This method looks very similar to getCertFromPem(idBytes []byte) (*x509.Certificate, error)
+	// Important: This method looks very similar to getCertFromPem(idBytes []byte) (*sm2.Certificate, error)
 	// But we:
 	// 1) Must ensure PEM block is of type CERTIFICATE or is empty
 	// 2) Must not replace getCertFromPem with this method otherwise we will introduce
@@ -819,6 +823,6 @@ func (msp *bccspmsp) IsWellFormed(identity *m.SerializedIdentity) error {
 	if bl.Type != "CERTIFICATE" && bl.Type != "" {
 		return errors.Errorf("pem type is %s, should be 'CERTIFICATE' or missing", bl.Type)
 	}
-	_, err := x509.ParseCertificate(bl.Bytes)
+	_, err := sm2.ParseCertificate(bl.Bytes)
 	return err
 }

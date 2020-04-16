@@ -7,8 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package membership
 
 import (
-	"crypto/x509"
+	//"crypto/x509"
+	//"crypto/tls"
+	//"crypto/x509"
+	//tls "github.com/zcqzcg/gmtls"
 	"encoding/pem"
+	x509 "github.com/zcqzcg/gmsm/sm2"
 
 	"strings"
 

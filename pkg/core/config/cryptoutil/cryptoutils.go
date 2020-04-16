@@ -9,9 +9,13 @@ package cryptoutil
 import (
 	"crypto"
 	"crypto/ecdsa"
-	"crypto/tls"
+	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric/bccsp/gm"
+
+	//"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"github.com/zcqzcg/gmsm/sm2"
+	tls "github.com/zcqzcg/gmtls"
 	"io"
 
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/logging"
@@ -57,9 +61,14 @@ func GetPublicKeyFromCert(cert []byte, cs core.CryptoSuite) (core.Key, error) {
 		return nil, errors.Errorf("Unable to decode cert bytes [%v]", cert)
 	}
 
-	x509Cert, err := x509.ParseCertificate(dcert.Bytes)
-	if err != nil {
-		return nil, errors.Errorf("Unable to parse cert from decoded bytes: %s", err)
+	var x509Cert *x509.Certificate
+	var err error
+	//log.Debugf("cpcpcpcpcpcpcpcpcpcpcpcpcpcpcppcpc")
+	sm2x509Cert, err := sm2.ParseCertificate(dcert.Bytes)
+	if err == nil {
+		x509Cert = gm.ParseSm2Certificate2X509(sm2x509Cert)
+	} else {
+		x509Cert, err = x509.ParseCertificate(dcert.Bytes)
 	}
 
 	// get the public key in the right format
@@ -103,6 +112,8 @@ func X509KeyPair(certPEMBlock []byte, pk core.Key, cs core.CryptoSuite) (tls.Cer
 	switch x509Cert.PublicKey.(type) {
 	case *ecdsa.PublicKey:
 		cert.PrivateKey = &PrivateKey{cs, pk, &ecdsa.PublicKey{}}
+	case *sm2.PublicKey:
+		cert.PrivateKey = &PrivateKey{cs, pk, &sm2.PublicKey{}}
 	default:
 		return fail(errors.New("tls: unknown public key algorithm"))
 	}

@@ -72,8 +72,8 @@ func (v *ecdsaPrivateKeyVerifier) Verify(k bccsp.Key, signature, digest []byte, 
 	return verifyECDSA(&(k.(*ecdsaPrivateKey).privKey.PublicKey), signature, digest, opts)
 }
 
-type ecdsaPublicKeyKeyVerifier struct{}
-
-func (v *ecdsaPublicKeyKeyVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
-	return verifyECDSA(k.(*ecdsaPublicKey).pubKey, signature, digest, opts)
-}
+//type ecdsaPublicKeyKeyVerifier struct{}
+//
+//func (v *ecdsaPublicKeyKeyVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
+//	return verifyECDSA(k.(*ecdsaPublicKey).pubKey, signature, digest, opts)
+//}
