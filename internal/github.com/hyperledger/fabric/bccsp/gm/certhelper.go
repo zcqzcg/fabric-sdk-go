@@ -18,6 +18,7 @@ package gm
 import (
 	"crypto/rand"
 	"crypto/x509"
+	//"github.com/hyperledger/fabric-sdk-go/vendor/github.com/zcqzcg/gmsm/sm2"
 	"io"
 	"math/big"
 

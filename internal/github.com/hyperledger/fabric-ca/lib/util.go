@@ -11,11 +11,12 @@ Please review third_party pinning scripts and patches for more details.
 package lib
 
 import (
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
-	"net/http"
+	http "github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/http-gm"
+	//"crypto/tls"
+	tls "github.com/zcqzcg/gmtls"
 
 	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/util"
 	"github.com/pkg/errors"

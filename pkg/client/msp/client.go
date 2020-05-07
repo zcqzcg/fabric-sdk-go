@@ -121,7 +121,7 @@ func newCAClient(ctx context.Client, orgName string, caID string) (mspapi.CAClie
 
 	caClient, err := msp.NewCAClient(orgName, ctx, msp.WithCAInstance(caID))
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to create CA Client")
+		return nil, errors.WithMessage(err, "222failed to create CA Client")
 	}
 
 	return caClient, nil

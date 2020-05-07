@@ -12,11 +12,16 @@ package lib
 
 import (
 	"bytes"
+	"crypto"
+	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/json"
 	"fmt"
+	http "github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/http-gm"
+	"github.com/zcqzcg/gmsm/sm2"
 	"io/ioutil"
 	"net"
-	"net/http"
+	"net/mail"
 	"net/url"
 	"os"
 	"path"
@@ -32,8 +37,8 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/lib/client/credential"
 	x509cred "github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/lib/client/credential/x509"
 	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/lib/common"
+	tls "github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/lib/gmtls"
 	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/lib/streamer"
-	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/lib/tls"
 	log "github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/sdkpatch/logbridge"
 	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/util"
 	"github.com/mitchellh/mapstructure"
@@ -186,7 +191,7 @@ func (c *Client) GetCAInfo(req *api.GetCAInfoRequest) (*GetCAInfoResponse, error
 
 // GenCSR generates a CSR (Certificate Signing Request)
 func (c *Client) GenCSR(req *api.CSRInfo, id string) ([]byte, core.Key, error) {
-	log.Debugf("GenCSR %+v", req)
+	log.Info("GenCSR %+v", req)
 
 	err := c.Init()
 	if err != nil {
@@ -209,10 +214,102 @@ func (c *Client) GenCSR(req *api.CSRInfo, id string) ([]byte, core.Key, error) {
 	csrPEM, err := csr.Generate(cspSigner, cr)
 	if err != nil {
 		log.Debugf("failed generating CSR: %s", err)
-		return nil, nil, err
+		log.Info("Try sm2 generate CSR...")
+		csrPEM, err = generate(cspSigner, cr, key)
+		if err != nil {
+			log.Debugf("failed generating CSR: %s", err)
+			return nil, nil, err
+		}
 	}
 
 	return csrPEM, key, nil
+}
+
+//cloudflare 证书请求 转成 国密证书请求
+func generate(priv crypto.Signer, req *csr.CertificateRequest, key core.Key) (csr []byte, err error) {
+	log.Info("xx entry gm generate")
+	sigAlgo := signerAlgo(priv)
+	if sigAlgo == sm2.UnknownSignatureAlgorithm {
+		return nil, fmt.Errorf("Private key is unavailable")
+	}
+	log.Info("xx begin create sm2.CertificateRequest")
+	var tpl = sm2.CertificateRequest{
+		Subject:            req.Name(),
+		SignatureAlgorithm: sigAlgo,
+	}
+	for i := range req.Hosts {
+		if ip := net.ParseIP(req.Hosts[i]); ip != nil {
+			tpl.IPAddresses = append(tpl.IPAddresses, ip)
+		} else if email, err := mail.ParseAddress(req.Hosts[i]); err == nil && email != nil {
+			tpl.EmailAddresses = append(tpl.EmailAddresses, email.Address)
+		} else {
+			tpl.DNSNames = append(tpl.DNSNames, req.Hosts[i])
+		}
+	}
+
+	if req.CA != nil {
+		err = appendCAInfoToCSRSm2(req.CA, &tpl)
+		if err != nil {
+			err = fmt.Errorf("sm2 GenerationFailed")
+			return
+		}
+	}
+	if req.SerialNumber != "" {
+
+	}
+
+	sm2PrivateKeyBytes,err := key.Bytes()
+	if err != nil {
+		err = fmt.Errorf("key.Bytes() failed.")
+		return
+	}
+
+	prvKey,err := sm2.ReadPrivateKeyFromMem(sm2PrivateKeyBytes,nil)
+	if err != nil {
+		err = fmt.Errorf("sm2.ReadPrivateKeyFromMem failed.",err)
+		return
+	}
+
+	csr, err = sm2.CreateCertificateRequestToMem(&tpl,prvKey)
+
+	log.Info("xx exit generate")
+	return csr, err
+}
+
+func signerAlgo(priv crypto.Signer) sm2.SignatureAlgorithm {
+	switch pub := priv.Public().(type) {
+	case *sm2.PublicKey:
+		switch pub.Curve {
+		case sm2.P256Sm2():
+			return sm2.SM2WithSM3
+		default:
+			return sm2.SM2WithSM3
+		}
+	default:
+		return sm2.UnknownSignatureAlgorithm
+	}
+}
+// appendCAInfoToCSR appends CAConfig BasicConstraint extension to a CSR
+func appendCAInfoToCSRSm2(reqConf *csr.CAConfig, csreq *sm2.CertificateRequest) error {
+	pathlen := reqConf.PathLength
+	if pathlen == 0 && !reqConf.PathLenZero {
+		pathlen = -1
+	}
+	val, err := asn1.Marshal(csr.BasicConstraints{true, pathlen})
+
+	if err != nil {
+		return err
+	}
+
+	csreq.ExtraExtensions = []pkix.Extension{
+		{
+			Id:       asn1.ObjectIdentifier{2, 5, 29, 19},
+			Value:    val,
+			Critical: true,
+		},
+	}
+
+	return nil
 }
 
 // Enroll enrolls a new identity
@@ -573,8 +670,8 @@ func (c *Client) checkX509Enrollment() error {
 	return errors.New("X509 enrollment information does not exist")
 }
 
-func newCfsslBasicKeyRequest(bkr *api.BasicKeyRequest) *csr.BasicKeyRequest {
-	return &csr.BasicKeyRequest{A: bkr.Algo, S: bkr.Size}
+func newCfsslBasicKeyRequest(bkr *api.BasicKeyRequest) *csr.KeyRequest {
+	return &csr.KeyRequest{A: bkr.Algo, S: bkr.Size}
 }
 
 // NormalizeURL normalizes a URL (from cfssl)

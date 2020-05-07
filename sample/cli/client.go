@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric-sdk-go/pkg/client/channel"
+	"github.com/hyperledger/fabric-sdk-go/pkg/client/msp"
 	"github.com/hyperledger/fabric-sdk-go/pkg/client/resmgmt"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/fab"
 	"github.com/hyperledger/fabric-sdk-go/pkg/core/config"
@@ -22,9 +23,10 @@ type Client struct {
 	OrgUser    string
 
 	// sdk clients
-	SDK *fabsdk.FabricSDK
-	rc  *resmgmt.Client
-	cc  *channel.Client
+	SDK       *fabsdk.FabricSDK
+	rc        *resmgmt.Client
+	cc        *channel.Client
+	mspClient *msp.Client
 
 	// Same for each peer
 	ChannelID string
@@ -40,7 +42,7 @@ func New(cfg, org, admin, user string) *Client {
 		OrgAdmin:   admin,
 		OrgUser:    user,
 
-		CCID:      "sdkcc",
+		CCID:      "mycc",
 		CCPath:    "github.com/hyperledger/fabric-samples-gm/chaincode/chaincode_example02/go/", // 相对路径是从GOPAHT/src开始的
 		CCGoPath:  os.Getenv("GOPATH"),
 		ChannelID: "mychannel",
@@ -55,13 +57,13 @@ func New(cfg, org, admin, user string) *Client {
 	c.SDK = sdk
 	log.Println("Initialized fabric sdk")
 
-	c.rc, c.cc = NewSdkClient(sdk, c.ChannelID, c.OrgName, c.OrgAdmin, c.OrgUser)
+	c.rc, c.cc,c.mspClient = NewSdkClient(sdk, c.ChannelID, c.OrgName, c.OrgAdmin, c.OrgUser)
 
 	return c
 }
 
 // NewSdkClient create resource client and channel client
-func NewSdkClient(sdk *fabsdk.FabricSDK, channelID, orgName, orgAdmin, OrgUser string) (rc *resmgmt.Client, cc *channel.Client) {
+func NewSdkClient(sdk *fabsdk.FabricSDK, channelID, orgName, orgAdmin, OrgUser string) (rc *resmgmt.Client, cc *channel.Client, mspClient *msp.Client) {
 	var err error
 
 	// create rc
@@ -80,7 +82,14 @@ func NewSdkClient(sdk *fabsdk.FabricSDK, channelID, orgName, orgAdmin, OrgUser s
 	}
 	log.Println("Initialized channel client")
 
-	return rc, cc
+	// create mspClient
+	mspClient, err = msp.New(rcp)
+	if err != nil {
+		log.Panicf("failed to create channel client: %s", err)
+	}
+	log.Println("Initialized msp client")
+
+	return rc, cc, mspClient
 }
 
 // RegisterChaincodeEvent more easy than event client to registering chaincode event.

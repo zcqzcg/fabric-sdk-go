@@ -13,7 +13,7 @@ package lib
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
+	http "github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/http-gm"
 	"strconv"
 	"strings"
 

@@ -18,7 +18,6 @@ package gm
 import (
 	"crypto/elliptic"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 
 	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric/bccsp"
@@ -32,7 +31,8 @@ type gmsm2PrivateKey struct {
 // Bytes converts this key to its byte representation,
 // if this operation is allowed.
 func (k *gmsm2PrivateKey) Bytes() (raw []byte, err error) {
-	return nil, errors.New("Not supported.")
+	return sm2.WritePrivateKeytoMem(k.privKey,nil)
+	//return nil, errors.New("Not supported.")
 }
 
 // SKI returns the subject key identifier of this key.

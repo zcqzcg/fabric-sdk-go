@@ -7,9 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package msp
 
 import (
-	"github.com/pkg/errors"
-
 	"encoding/json"
+	"github.com/pkg/errors"
 
 	caapi "github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/api"
 	calib "github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/lib"
@@ -611,22 +610,25 @@ func createFabricCAClient(caID string, cryptoSuite core.CryptoSuite, config msp.
 	//set server name
 	c.Config.ServerName, _ = conf.GRPCOptions["ssl-target-name-override"].(string)
 	//certs file list
-	c.Config.TLS.CertFiles, ok = config.CAServerCerts(caID)
+	certFilesBytes , ok := config.CAServerCerts(caID)
+	c.Config.TLS.CertFiles = squareBytesSliceToStringSlice(certFilesBytes)
 	if !ok {
 		return nil, errors.Errorf("CA '%s' has no corresponding server certs in the configs", caID)
 	}
 
 	// set key file and cert file
-	c.Config.TLS.Client.CertFile, ok = config.CAClientCert(caID)
+	certBytes, ok := config.CAClientCert(caID)
 	if !ok {
 		return nil, errors.Errorf("CA '%s' has no corresponding client certs in the configs", caID)
 	}
 
-	c.Config.TLS.Client.KeyFile, ok = config.CAClientKey(caID)
+	c.Config.TLS.Client.CertFile = string(certBytes)
+
+	keyFileBytes, ok := config.CAClientKey(caID)
 	if !ok {
 		return nil, errors.Errorf("CA '%s' has no corresponding client keys in the configs", caID)
 	}
-
+	c.Config.TLS.Client.KeyFile = string(keyFileBytes)
 	//TLS flag enabled/disabled
 	c.Config.TLS.Enabled = endpoint.IsTLSEnabled(conf.URL)
 	c.Config.MSPDir = config.CAKeyStorePath()
@@ -640,4 +642,15 @@ func createFabricCAClient(caID string, cryptoSuite core.CryptoSuite, config msp.
 	}
 
 	return c, nil
+}
+
+// turn [][]byte to []string
+func squareBytesSliceToStringSlice(bytes [][]byte)(rst []string){
+	if len(bytes) == 0 {
+		return nil
+	}
+	for _,v := range bytes{
+		rst = append(rst, string(v))
+	}
+	return
 }

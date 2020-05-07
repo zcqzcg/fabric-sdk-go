@@ -41,7 +41,7 @@ func (f *GMFactory) Get(gmOpts *GmOpts) (bccsp.BCCSP, error) {
 		// Default to DummyKeystore
 		ks = gm.NewDummyKeyStore()
 	}
-	fmt.Println("Got a GM factory there.")
+	//fmt.Println("Got a GM factory there.")
 	return gm.New(gmOpts.SecLevel, "GMSM3", ks)
 	//return gm.New(gmOpts.SecLevel, gmOpts.HashFamily, ks)
 }

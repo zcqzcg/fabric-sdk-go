@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package signingmgr
 
 import (
-	"fmt"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/core"
 
 	"github.com/hyperledger/fabric-sdk-go/pkg/core/cryptosuite"
@@ -39,7 +38,7 @@ func (mgr *SigningManager) Sign(object []byte, key core.Key) ([]byte, error) {
 	if key == nil {
 		return nil, errors.New("key (for signing) required")
 	}
-	fmt.Println("================== hash Opts:", mgr.hashOpts.Algorithm(), "=================")
+	//fmt.Println("================== hash Opts:", mgr.hashOpts.Algorithm(), "=================")
 	digest, err := mgr.cryptoProvider.Hash(object, mgr.hashOpts)
 	if err != nil {
 		return nil, err

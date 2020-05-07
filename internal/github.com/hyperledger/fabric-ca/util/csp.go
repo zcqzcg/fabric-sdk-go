@@ -24,6 +24,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/tls"
+	//http "github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/http-gm"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
@@ -45,9 +46,9 @@ import (
 
 // getBCCSPKeyOpts generates a key as specified in the request.
 // This supports ECDSA.
-func getBCCSPKeyOpts(kr csr.KeyRequest, ephemeral bool) (opts core.KeyGenOpts, err error) {
+func getBCCSPKeyOpts(kr *csr.KeyRequest, ephemeral bool) (opts core.KeyGenOpts, err error) {
 	if kr == nil {
-		return factory.GetECDSAKeyGenOpts(ephemeral), nil
+		return factory.GetGMSM2KeyGenOpts(ephemeral), nil
 	}
 	log.Debugf("generate key from request: algo=%s, size=%d", kr.Algo(), kr.Size())
 	switch kr.Algo() {
@@ -313,10 +314,16 @@ func LoadX509KeyPair(certFile, keyFile []byte, csp core.CryptoSuite) (*tls.Certi
 }
 
 func LoadX509KeyPairSM2(certFile, keyFile string, csp core.CryptoSuite) (*gtls.Certificate, error) {
-
-	certPEMBlock, err := ioutil.ReadFile(certFile)
-	if err != nil {
-		return nil, err
+	certPEMBlock := []byte{}
+	var err error
+	if strings.Contains(certFile,"-----BEGIN") {
+		log.Debug("It's already in pem form.")
+		certPEMBlock = []byte(certFile)
+	} else {
+		certPEMBlock, err = ioutil.ReadFile(certFile)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Failed to read file '%s'", certFile)
+		}
 	}
 
 	cert := &gtls.Certificate{}
@@ -355,7 +362,12 @@ func LoadX509KeyPairSM2(certFile, keyFile string, csp core.CryptoSuite) (*gtls.C
 		if keyFile != "" {
 			log.Debugf("Could not load TLS certificate with BCCSP: %s", err)
 			log.Debugf("Attempting fallback with certfile %s and keyfile %s", certFile, keyFile)
-			fallbackCerts, err := gtls.LoadX509KeyPair(certFile, keyFile)
+			fallbackCerts := gtls.Certificate{}
+			if strings.Contains(certFile,"-----BEGIN") && strings.Contains(keyFile,"-----BEGIN") {
+				fallbackCerts,err = gtls.X509KeyPair([]byte(certFile),[]byte(keyFile))
+			} else {
+				fallbackCerts,err = gtls.LoadX509KeyPair(certFile, keyFile)
+			}
 			if err != nil {
 				return nil, errors.Wrapf(err, "Could not get the private key %s that matches %s", keyFile, certFile)
 			}

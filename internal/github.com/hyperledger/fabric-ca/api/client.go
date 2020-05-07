@@ -353,6 +353,7 @@ func (ar *AttributeRequest) IsRequired() bool {
 // NewBasicKeyRequest returns the BasicKeyRequest object that is constructed
 // from the object returned by the csr.NewBasicKeyRequest() function
 func NewBasicKeyRequest() *BasicKeyRequest {
-	bkr := csr.NewBasicKeyRequest()
-	return &BasicKeyRequest{Algo: bkr.A, Size: bkr.S}
+	bkr := csr.NewKeyRequest()
+	// force to be gmsm2 since we would not want to modify the cfssl files.
+	return &BasicKeyRequest{Algo: "gmsm2", Size: bkr.S}
 }

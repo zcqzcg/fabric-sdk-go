@@ -110,7 +110,7 @@ func processCAClientOptions(opts ...CAClientOption) (*caClientOption, error) {
 	for _, param := range opts {
 		err := param(&options)
 		if err != nil {
-			return nil, errors.WithMessage(err, "failed to create CA Client")
+			return nil, errors.WithMessage(err, "111failed to create CA Client")
 		}
 	}
 	return &options, nil

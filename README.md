@@ -1,3 +1,13 @@
+# GM Reminder
+
+Runing with samples with first-network-gm;
+
+file location: `sample/samples/chaincode/main.go`
+
+fabric link config location: `sample/config/org1sdk-config.yaml`
+ and `sample/config/org2sdk-config.yaml`
+
+
 # Hyperledger Fabric Client SDK for Go
 
 [![Release](https://img.shields.io/github/release/hyperledger/fabric-sdk-go.svg?style=flat-square)](https://github.com/hyperledger/fabric-sdk-go/releases/latest)

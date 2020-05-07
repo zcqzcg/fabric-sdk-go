@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/core"
 
 	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/api"
-	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/lib/tls"
+	tls "github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric-ca/lib/gmtls"
 )
 
 // ClientConfig is the fabric-ca client's config
