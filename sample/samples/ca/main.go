@@ -3,6 +3,8 @@ package main
 import (
 	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk"
 	"log"
+	"math/rand"
+	"strconv"
 
 	"github.com/hyperledger/fabric-sdk-go/sample/cli"
 )
@@ -31,7 +33,8 @@ func main() {
 func Phase1(cli1, cli2 *cli.Client) (username string){
 	log.Println("=================== Phase 1 begin ===================")
 	defer log.Println("=================== Phase 1 end ===================")
-	userName := "goUser6"
+	randNumber := rand.Int()
+	userName := "goUser"+ strconv.Itoa(randNumber)
 	userSecret := "123456"
 	//Enroll admin; Reg New User;
 	secret,err := cli1.RegisterUser(userName,userSecret,"",nil)
@@ -44,7 +47,7 @@ func Phase1(cli1, cli2 *cli.Client) (username string){
 	if err != nil {
 		log.Panicf("EnrollUser error: %v", err)
 	}
-	idRsp,_ := cli1.MspClient.GetIdentity(username)
+	//idRsp,_ := cli1.MspClient.GetIdentity(username)
 
 	return userName
 }

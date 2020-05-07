@@ -102,7 +102,7 @@ func (c *Client) genPolicy(p string) (*common.SignaturePolicyEnvelope, error) {
 
 func (c *Client) InvokeCC(peers []string) (fab.TransactionID, error) {
 	// new channel request for invoke
-	args := packArgs([]string{"a", "b", "10"})
+	args := packArgs([]string{"a", "b", "1"})
 	req := channel.Request{
 		ChaincodeID: c.CCID,
 		Fcn:         "invoke",
