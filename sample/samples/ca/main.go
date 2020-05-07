@@ -44,6 +44,7 @@ func Phase1(cli1, cli2 *cli.Client) (username string){
 	if err != nil {
 		log.Panicf("EnrollUser error: %v", err)
 	}
+	idRsp,_ := cli1.MspClient.GetIdentity(username)
 
 	return userName
 }

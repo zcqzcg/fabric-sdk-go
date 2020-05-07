@@ -26,7 +26,7 @@ type Client struct {
 	SDK       *fabsdk.FabricSDK
 	rc        *resmgmt.Client
 	cc        *channel.Client
-	mspClient *msp.Client
+	MspClient *msp.Client
 
 	// Same for each peer
 	ChannelID string
@@ -57,7 +57,7 @@ func New(cfg, org, admin, user string) *Client {
 	c.SDK = sdk
 	log.Println("Initialized fabric sdk")
 
-	c.rc, c.cc,c.mspClient = NewSdkClient(sdk, c.ChannelID, c.OrgName, c.OrgAdmin, c.OrgUser)
+	c.rc, c.cc,c.MspClient = NewSdkClient(sdk, c.ChannelID, c.OrgName, c.OrgAdmin, c.OrgUser)
 
 	return c
 }

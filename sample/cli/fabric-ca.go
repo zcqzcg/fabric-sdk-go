@@ -15,7 +15,7 @@ type FabricUser struct {
 
 func (c *Client)RegisterUser(username string, password string, affiliation string, attributes []msp.Attribute) (string, error) {
 
-	mspClient := c.mspClient
+	mspClient := c.MspClient
 	//rsp,err := mspClient.GetCAInfo()
 	//if err != nil {
 	//	log.Panic("xxxxxxxxxxxxxxxnot able to getCAInfo,",err)
@@ -51,7 +51,7 @@ func (c *Client) EnrollUser(username,s string) error {
 	if username == "" || s == "" {
 		return errors.New("we need a username/secret to enroll")
 	}
-	mspClient := c.mspClient
+	mspClient := c.MspClient
 	return mspClient.Enroll(username,msp.WithSecret(s))
 }
 

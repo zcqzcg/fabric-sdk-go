@@ -29,7 +29,7 @@ func main() {
 		logger.Info(username," exists in wallet.")
 	} else {
 		logger.Info(username," not enrolled yet.")
-
+		wallet.Put(username,gateway.NewX509Identity("Org1MSP",))
 	}
 
 
